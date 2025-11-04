@@ -31,7 +31,7 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'None' # Allows cookie to be sent from a
 
 CORS(app, 
     supports_credentials=True,
-    origins=["https://resqforce.vercel.app"],
+    origins=["*"],
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "Accept"]
 )
