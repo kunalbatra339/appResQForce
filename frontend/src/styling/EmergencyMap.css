@@ -1,0 +1,118 @@
+/* src/styling/EmergencyMap.css */
+#map-container {
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1; /* Ensure map is behind controls */
+}
+
+.controls-container {
+    position: fixed;
+    top: 20px;
+    /* --- MODIFIED: Changed left to right --- */
+    right: 20px;
+    /* left: 20px; <-- REMOVED */
+    /* --- END MODIFICATION --- */
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(5px);
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Unchanged styles below */
+.controls-container button, .controls-container a {
+    padding: 10px 15px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    text-align: center;
+    text-decoration: none;
+    transition: all 0.2s ease-in-out;
+}
+
+.back-button {
+    background-color: #555;
+    color: white;
+}
+.back-button:hover {
+    background-color: #333;
+}
+
+.delete-button {
+    background-color: #dc3545;
+    color: white;
+}
+.delete-button:hover {
+    background-color: #c82333;
+}
+
+.message-bar {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 10px 20px;
+    border-radius: 8px;
+    color: white;
+    z-index: 1001;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.message-bar.success {
+    background-color: #28a745;
+}
+
+.message-bar.error {
+    background-color: #dc3545;
+}
+
+/* --- Responsive Design --- */
+@media (max-width: 600px) {
+    .controls-container {
+        top: 10px;
+        /* --- MODIFIED: Changed left to right --- */
+        right: 10px;
+        left: 10px; /* Kept left: 10px to span across, ensure justify-content works */
+        /* --- END MODIFICATION --- */
+        flex-direction: row;
+        justify-content: space-between;
+        padding: 10px;
+        gap: 5px; /* Added gap */
+    }
+    .message-bar {
+        top: 70px; /* Position below the controls */
+        width: 90%;
+    }
+    .toggle-autofit-button {
+        padding: 8px 10px; /* Slightly smaller on mobile */
+    }
+}
+
+/* Styles for toggle button (unchanged) */
+.toggle-autofit-button {
+    background-color: #6c757d; /* A neutral gray */
+    color: white;
+    padding: 10px 15px; /* Match other buttons */
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.toggle-autofit-button:hover {
+    background-color: #5a6268;
+}
+
+/* No change needed to the mobile toggle button style */

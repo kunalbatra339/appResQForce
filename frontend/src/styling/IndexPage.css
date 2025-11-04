@@ -1,0 +1,94 @@
+/* src/styling/IndexPage.css */
+.container {
+  background: #111111;
+  padding: 60px 70px;
+  border-radius: 28px;
+  text-align: center;
+  box-shadow: 0 30px 90px rgba(255, 255, 255, 0.08);
+  max-width: 560px;
+  width: 90%;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.35s ease;
+}
+
+.container:hover {
+  box-shadow: 0 40px 110px rgba(255, 255, 255, 0.12);
+  transform: scale(1.01);
+}
+
+.container h1 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 3rem;
+  letter-spacing: 2px;
+  background: linear-gradient(to right, #3b82f6, #22d3ee);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 20px;
+}
+
+.tagline {
+  font-family: 'Unbounded', cursive;
+  font-size: 1.1rem;
+  color: #e2e8f0;
+  margin-bottom: 40px;
+  font-weight: 500;
+}
+
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.btn {
+  padding: 18px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  border: none;
+  border-radius: 16px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 24px rgba(59, 130, 246, 0.3);
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.btn:hover {
+  transform: translateY(-4px) scale(1.04);
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  box-shadow: 0 14px 30px rgba(37, 99, 235, 0.45);
+}
+
+.btn.danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 10px 24px rgba(220, 38, 38, 0.3);
+}
+
+.btn.danger:hover {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  box-shadow: 0 14px 30px rgba(220, 38, 38, 0.5);
+}
+
+.disclaimer {
+  font-size: 12px;
+  color: #888;
+  margin-top: 30px;
+  max-width: 500px;
+}
+
+/* --- Responsive Design --- */
+@media (max-width: 600px) {
+  .container {
+    padding: 40px 30px;
+  }
+
+  .container h1 {
+    font-size: 2.3rem;
+  }
+
+  .btn {
+    font-size: 16px;
+    padding: 16px;
+  }
+}

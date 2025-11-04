@@ -1,0 +1,37 @@
+# Python virtual environment
+venv/
+env/
+*.venv/
+.venv/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE and editor configuration
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Environment variables file
+.env
+.env*
+
+# Flask specific cache (optional, depends on extensions)
+.webassets-cache/
+instance/
+
+# If using build tools (e.g., PyInstaller)
+build/
+dist/
+*.spec
+
+# Logs (if you create any)
+*.log
+logs/
