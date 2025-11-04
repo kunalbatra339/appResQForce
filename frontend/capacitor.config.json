@@ -1,0 +1,9 @@
+{
+  "appId": "com.resqforce.app",
+  "appName": "ResQForce",
+  "webDir": "dist",
+  "server": {
+    "url": "https://resqforce.vercel.app",
+    "cleartext": false
+  }
+}
