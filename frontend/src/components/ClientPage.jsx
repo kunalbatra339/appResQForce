@@ -99,7 +99,7 @@ function ClientPage() {
             // Error Callback (Geolocation Failed)
             (geoError) => {
                 console.error("Geolocation failed:", geoError.message); // <-- Log 10
-                const isOnline = navigator.onLine; // Check network status *during* error
+                const isOnline = navigator.onLine; // Check network status during error
                 console.log("Network status check during geo fail. Is online:", isOnline);
 
                 if (!isOnline) {
@@ -131,7 +131,7 @@ function ClientPage() {
 
     // --- ADDED: Helper function from second code block ---
     const queueReportOffline = (reportData, displayLat, displayLng) => {
-         try {
+        try {
             const queuedReports = JSON.parse(localStorage.getItem('queuedEmergencyReports') || '[]');
             queuedReports.push(reportData);
             localStorage.setItem('queuedEmergencyReports', JSON.stringify(queuedReports));
@@ -168,8 +168,8 @@ function ClientPage() {
                         <option value="fire">🔥 Fire</option>
                         <option value="flood">🌊 Flood</option>
                         <option value="accident">🚨 Accident</option>
-                        <option value="medical">⚕️ Medical</option>
-                        <option value="natural_disaster">🌪️ Natural Disaster</option>
+                        <option value="medical">⚕ Medical</option>
+                        <option value="natural_disaster">🌪 Natural Disaster</option>
                         <option value="crime">🔪 Crime</option>
                         <option value="other">❓ Other</option>
                     </select>
