@@ -1,7 +1,8 @@
-// src/components/ClientPage.jsx (Default severity set to 'medium')
-import React, { useState, useEffect } from 'react'; // No change needed
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'; // No change needed
-import apiClient from '../api/axiosConfig'; // No change needed
+// src/components/ClientPage.jsx (FIXED: Stray characters removed and icon added)
+import React, { useState, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet'; // <-- ADDED for custom icon
+import apiClient from '../api/axiosConfig';
 
 // styles object (Unchanged)
 const styles = {
@@ -20,6 +21,21 @@ const styles = {
     error: { backgroundColor: '#ef4444', color: 'white' },
 };
 
+// --- ADDED: Custom Blue Icon Definition (Copied from EmergencyMap.jsx) ---
+const agencyIcon = L.divIcon({
+    className: 'custom-agency-icon', // You may need to copy .custom-agency-icon CSS
+    html: `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="25" height="25" fill="#3498db">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+        </svg>
+    `,
+    iconSize: [30, 30],
+    iconAnchor: [15, 30],
+    popupAnchor: [0, -28]
+});
+// --- END: Icon Definition ---
+
+
 // MapUpdater component (Unchanged)
 const MapUpdater = ({ center, zoom }) => {
     const map = useMap();
@@ -33,9 +49,7 @@ function ClientPage() {
     // State variables
     const [tag, setTag] = useState('fire');
     const [description, setDescription] = useState('');
-    // --- THIS LINE IS MODIFIED ---
     const [severity, setSeverity] = useState('medium'); // Default is now 'medium'
-    // --- END MODIFICATION ---
     const [mobileNumber, setMobileNumber] = useState('');
     const [message, setMessage] = useState({ text: '', type: '' });
     const [mapState, setMapState] = useState({ position: [20.5937, 78.9629], zoom: 5 });
@@ -47,12 +61,11 @@ function ClientPage() {
         setTimeout(() => setMessage({ text: '', type: '' }), 5000);
     };
 
-    // --- REPLACED: handleSubmit function with offline logic ---
+    // --- REPLACED: handleSubmit function with offline logic (Unchanged) ---
     const handleSubmit = (event) => {
         event.preventDefault();
 
-        // Validations (Description check removed)
-        // if (!description.trim()) { displayMessage('Please describe the emergency.', 'error'); return; } // <-- THIS LINE IS REMOVED
+        // Validations (Unchanged)
         if (!mobileNumber.trim()) { displayMessage('Please enter a mobile number.', 'error'); return; }
         if (!/^\d{10}$/.test(mobileNumber)) { displayMessage('Please enter a valid 10-digit mobile number.', 'error'); return; }
 
@@ -61,45 +74,43 @@ function ClientPage() {
         }
 
         displayMessage("Getting location...", "info");
-        console.log("Requesting geolocation..."); // <-- Log 1
+        console.log("Requesting geolocation...");
 
         navigator.geolocation.getCurrentPosition(
             // Success Callback (Location OK)
             async (pos) => {
                 const { latitude: lat, longitude: lng } = pos.coords;
-                console.log("Geolocation successful:", lat, lng); // <-- Log 2
+                console.log("Geolocation successful:", lat, lng);
                 const reportData = { lat, lng, description, tag, severity, timestamp: new Date().toISOString() };
-                const isOnline = navigator.onLine; // <-- Check status
-                console.log("Network status check. Is online:", isOnline); // <-- Log 3
+                const isOnline = navigator.onLine;
+                console.log("Network status check. Is online:", isOnline);
 
                 if (isOnline) {
                     // ONLINE PATH
-                    console.log("Attempting to send report online..."); // <-- Log 4
+                    console.log("Attempting to send report online...");
                     displayMessage("Sending report...", "info");
                     try {
                         await apiClient.post('/report_emergency', reportData);
-                        console.log("Online report sent successfully."); // <-- Log 5
+                        console.log("Online report sent successfully.");
                         displayMessage('Emergency reported successfully!', 'success');
                         // Reset form
                         setMapState({ position: [lat, lng], zoom: 15 });
                         setReportedLocation([lat, lng]);
-                        setDescription(''); setSeverity('medium'); setMobileNumber(''); // Reset severity to medium
+                        setDescription(''); setSeverity('medium'); setMobileNumber('');
                     } catch (err) {
-                        console.error("Failed to report emergency online:", err); // <-- Log 6
+                        console.error("Failed to report emergency online:", err);
                         displayMessage('Failed to send report. Check connection or try again.', 'error');
-                        // Optional: Queue here too if online send fails
-                        // queueReportOffline(reportData, lat, lng);
                     }
                 } else {
                     // OFFLINE PATH
-                    console.log("Attempting to queue report offline (location success)..."); // <-- Log 7
+                    console.log("Attempting to queue report offline (location success)...");
                     queueReportOffline(reportData, lat, lng); // Use helper function
                 }
             },
             // Error Callback (Geolocation Failed)
             (geoError) => {
-                console.error("Geolocation failed:", geoError.message); // <-- Log 10
-                const isOnline = navigator.onLine; // Check network status during error
+                console.error("Geolocation failed:", geoError.message);
+                const isOnline = navigator.onLine;
                 console.log("Network status check during geo fail. Is online:", isOnline);
 
                 if (!isOnline) {
@@ -123,7 +134,7 @@ function ClientPage() {
                 }
             },
             // Options
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 } // Increased timeout slightly
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
         );
     };
     // --- END: handleSubmit replacement ---
@@ -135,15 +146,15 @@ function ClientPage() {
             const queuedReports = JSON.parse(localStorage.getItem('queuedEmergencyReports') || '[]');
             queuedReports.push(reportData);
             localStorage.setItem('queuedEmergencyReports', JSON.stringify(queuedReports));
-            console.log("Report queued successfully:", reportData); // <-- Log 8
-            displayMessage('Offline. Report queued and will send when online.', 'info'); // <-- Check this message
+            console.log("Report queued successfully:", reportData);
+            displayMessage('Offline. Report queued and will send when online.', 'info');
             // Reset form
             // Use displayLat/Lng which might be placeholders if geo failed
             setMapState({ position: [displayLat, displayLng], zoom: 15 });
             setReportedLocation([displayLat, displayLng]);
-            setDescription(''); setSeverity('medium'); setMobileNumber(''); // Reset severity to medium
+            setDescription(''); setSeverity('medium'); setMobileNumber('');
         } catch (storageError) {
-            console.error("Failed to queue report locally:", storageError); // <-- Log 9
+            console.error("Failed to queue report locally:", storageError);
             displayMessage('Offline. Could not save report locally.', 'error');
         }
     };
@@ -155,7 +166,9 @@ function ClientPage() {
             <div style={styles.mapContainer}>
                 <MapContainer center={mapState.position} zoom={mapState.zoom} style={{ height: '100%', width: '100%', borderRadius: '15px' }}>
                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
-                    {reportedLocation && <Marker position={reportedLocation}><Popup>Reported location</Popup></Marker>}
+                    {/* --- THIS LINE IS MODIFIED (and cleaned) --- */}
+                    {reportedLocation && <Marker position={reportedLocation} icon={agencyIcon}><Popup>Reported location</Popup></Marker>}
+                    {/* --- END MODIFICATION --- */}
                     <MapUpdater center={mapState.position} zoom={mapState.zoom} />
                 </MapContainer>
             </div>
@@ -171,7 +184,7 @@ function ClientPage() {
                         <option value="medical">⚕ Medical</option>
                         <option value="natural_disaster">🌪 Natural Disaster</option>
                         <option value="crime">🔪 Crime</option>
-                        <option value="other">❓ Other</option>
+                        <option valueD="other">❓ Other</option>
                     </select>
                     <div style={styles.severityGroup}>
                         {['low', 'medium', 'high'].map((level) => (
@@ -189,7 +202,7 @@ function ClientPage() {
                         placeholder="Enter your mobile number"
                         required
                     />
-                    {/* --- THIS LINE IS MODIFIED --- */}
+                    {/* --- THIS LINE IS MODIFIED (and cleaned) --- */}
                     <textarea style={{...styles.inputBase, ...styles.textArea}} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the emergency... (Optional)" />
                     {/* --- END MODIFICATION --- */}
                     <button type="submit" style={styles.submitButton}>Send Alert</button>
