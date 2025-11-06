@@ -3,7 +3,7 @@
   "appName": "ResQForce",
   "webDir": "dist",
   "server": {
-    "url": "https://resqforce.vercel.app",
+    "url": "https://app-res-q-force.vercel.app/",
     "cleartext": false
   }
 }
