@@ -1,15 +1,15 @@
-// src/App.jsx (FIXED: Race condition resolved)
+// src/App.jsx (FIXED: All stray characters, race condition, and name collision)
 import React, { useEffect, useState } from 'react'; // MODIFIED: Added useState
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'; // No change
 import { AuthProvider } from './context/AuthContext'; // No change
 import useAuth from './hooks/useAuth'; // No change
 import apiClient from './api/axiosConfig'; // No change
 
-// --- ADDED: Imports for new native features ---
-import { App } from '@capacitor/app'; // For native back button and app events
+// --- MODIFIED: Imports for new native features (FIXED name collision) ---
+import { App as CapacitorApp } from '@capacitor/app'; // For native back button and app events
 import { Geolocation } from '@capacitor/geolocation'; // For requesting location permissions
 import PullToRefresh from 'react-simple-pull-to-refresh'; // For pull-to-refresh
-// --- END: Added Imports ---
+// --- END: Modified Imports ---
 
 // Import your page components (Unchanged)
 import IndexPage from './components/IndexPage';
@@ -63,19 +63,19 @@ function App() {
   };
   // --- END: Pull-to-Refresh Handler ---
 
-  // --- ADDED: Native Back Button Handler ---
+  // --- MODIFIED: Native Back Button Handler ---
   useEffect(() => {
     // We only add this listener if we're on a native platform
-    if (App.isNativePlatform()) {
+    if (CapacitorApp.isNativePlatform()) { // <-- MODIFIED
       console.log("[Back Button] Setting up native back button listener...");
       // Save the listener to a variable
-      const backButtonListener = App.addListener('backButton', ({ canGoBack }) => {
+      const backButtonListener = CapacitorApp.addListener('backButton', ({ canGoBack }) => { // <-- MODIFIED
         if (canGoBack) {
           console.log("[Back Button] Native back button: navigating history back.");
           window.history.back();
         } else {
           console.log("[Back Button] Native back button: no history, exiting app.");
-          App.exitApp();
+          CapacitorApp.exitApp(); // <-- MODIFIED
         }
       });
 
@@ -112,7 +112,7 @@ function App() {
     };
 
     // Only run this logic if we're in the Capacitor native environment
-    if (App.isNativePlatform()) {
+    if (CapacitorApp.isNativePlatform()) { // <-- MODIFIED
       requestLocationPermission();
     } else {
       console.log("[Geolocation] Not a native platform, skipping permission request.");
