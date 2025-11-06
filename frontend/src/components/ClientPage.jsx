@@ -1,4 +1,4 @@
-// src/components/ClientPage.jsx (Updated with Offline Queueing Logic)
+// src/components/ClientPage.jsx (Default severity set to 'medium')
 import React, { useState, useEffect } from 'react'; // No change needed
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'; // No change needed
 import apiClient from '../api/axiosConfig'; // No change needed
@@ -30,10 +30,12 @@ const MapUpdater = ({ center, zoom }) => {
 }
 
 function ClientPage() {
-    // State variables (Unchanged)
+    // State variables
     const [tag, setTag] = useState('fire');
     const [description, setDescription] = useState('');
-    const [severity, setSeverity] = useState('low');
+    // --- THIS LINE IS MODIFIED ---
+    const [severity, setSeverity] = useState('medium'); // Default is now 'medium'
+    // --- END MODIFICATION ---
     const [mobileNumber, setMobileNumber] = useState('');
     const [message, setMessage] = useState({ text: '', type: '' });
     const [mapState, setMapState] = useState({ position: [20.5937, 78.9629], zoom: 5 });
@@ -49,8 +51,8 @@ function ClientPage() {
     const handleSubmit = (event) => {
         event.preventDefault();
 
-        // Validations (Unchanged)
-        if (!description.trim()) { displayMessage('Please describe the emergency.', 'error'); return; }
+        // Validations (Description check removed)
+        // if (!description.trim()) { displayMessage('Please describe the emergency.', 'error'); return; } // <-- THIS LINE IS REMOVED
         if (!mobileNumber.trim()) { displayMessage('Please enter a mobile number.', 'error'); return; }
         if (!/^\d{10}$/.test(mobileNumber)) { displayMessage('Please enter a valid 10-digit mobile number.', 'error'); return; }
 
@@ -81,7 +83,7 @@ function ClientPage() {
                         // Reset form
                         setMapState({ position: [lat, lng], zoom: 15 });
                         setReportedLocation([lat, lng]);
-                        setDescription(''); setSeverity('low'); setMobileNumber('');
+                        setDescription(''); setSeverity('medium'); setMobileNumber(''); // Reset severity to medium
                     } catch (err) {
                         console.error("Failed to report emergency online:", err); // <-- Log 6
                         displayMessage('Failed to send report. Check connection or try again.', 'error');
@@ -97,7 +99,7 @@ function ClientPage() {
             // Error Callback (Geolocation Failed)
             (geoError) => {
                 console.error("Geolocation failed:", geoError.message); // <-- Log 10
-                const isOnline = navigator.onLine; // Check network status *during* error
+                const isOnline = navigator.onLine; // Check network status during error
                 console.log("Network status check during geo fail. Is online:", isOnline);
 
                 if (!isOnline) {
@@ -129,7 +131,7 @@ function ClientPage() {
 
     // --- ADDED: Helper function from second code block ---
     const queueReportOffline = (reportData, displayLat, displayLng) => {
-         try {
+        try {
             const queuedReports = JSON.parse(localStorage.getItem('queuedEmergencyReports') || '[]');
             queuedReports.push(reportData);
             localStorage.setItem('queuedEmergencyReports', JSON.stringify(queuedReports));
@@ -139,7 +141,7 @@ function ClientPage() {
             // Use displayLat/Lng which might be placeholders if geo failed
             setMapState({ position: [displayLat, displayLng], zoom: 15 });
             setReportedLocation([displayLat, displayLng]);
-            setDescription(''); setSeverity('low'); setMobileNumber('');
+            setDescription(''); setSeverity('medium'); setMobileNumber(''); // Reset severity to medium
         } catch (storageError) {
             console.error("Failed to queue report locally:", storageError); // <-- Log 9
             displayMessage('Offline. Could not save report locally.', 'error');
@@ -161,13 +163,13 @@ function ClientPage() {
                 <h3 style={styles.title}>🚨 Report Emergency</h3>
                 <p style={styles.disclaimer}>For demonstration purposes only.</p>
                 <form onSubmit={handleSubmit} style={{ width: '100%' }}>
-                   {/* ... form elements ... */}
+                    {/* ... form elements ... */}
                     <select style={styles.inputBase} value={tag} onChange={(e) => setTag(e.target.value)}>
                         <option value="fire">🔥 Fire</option>
                         <option value="flood">🌊 Flood</option>
                         <option value="accident">🚨 Accident</option>
-                        <option value="medical">⚕️ Medical</option>
-                        <option value="natural_disaster">🌪️ Natural Disaster</option>
+                        <option value="medical">⚕ Medical</option>
+                        <option value="natural_disaster">🌪 Natural Disaster</option>
                         <option value="crime">🔪 Crime</option>
                         <option value="other">❓ Other</option>
                     </select>
@@ -187,7 +189,9 @@ function ClientPage() {
                         placeholder="Enter your mobile number"
                         required
                     />
-                    <textarea style={{...styles.inputBase, ...styles.textArea}} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the emergency..." required />
+                    {/* --- THIS LINE IS MODIFIED --- */}
+                    <textarea style={{...styles.inputBase, ...styles.textArea}} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the emergency... (Optional)" />
+                    {/* --- END MODIFICATION --- */}
                     <button type="submit" style={styles.submitButton}>Send Alert</button>
                 </form>
                 {message.text && <div style={{ ...styles.messageBox, ...(styles[message.type]) }}>{message.text}</div>}
