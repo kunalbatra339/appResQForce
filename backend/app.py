@@ -1,121 +1,88 @@
-# app.py (Complete with all features + Email Notification Logic Added)
+# app.py (Adding Twilio Call Feature)
 
-from flask import Flask, request, jsonify, session # Removed unused redirect, url_for
+from flask import Flask, request, jsonify, session
 from flask_cors import CORS
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 import hashlib
 import os
 from datetime import datetime, timezone
-from math import radians, cos, sin, acos, asin, sqrt # Added asin, sqrt for Haversine
+from math import radians, cos, sin, acos, asin, sqrt
 import re 
-# --- NEW: Email Imports ---
-# --- REMOVED: smtplib, ssl, EmailMessage imports ---
-# --- NEW: SendGrid Imports ---
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
-# --- END: SendGrid Imports ---
-# --- END: Email Imports ---
-# --- NEW: Import and load dotenv ---
+# --- NEW: Twilio Import ---
+from twilio.rest import Client
+# --- END: Twilio Import ---
 from dotenv import load_dotenv
-load_dotenv() # Loads variables from .env file
-# --- END: dotenv ---
+load_dotenv() 
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-# --- ADD THESE TWO LINES ---
-app.config['SESSION_COOKIE_SECURE'] = True  # Ensures cookie is only sent over HTTPS
-app.config['SESSION_COOKIE_SAMESITE'] = 'None' # Allows cookie to be sent from a different domain
-# --- END OF ADDITION ---
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 
 CORS(app, 
     supports_credentials=True,
-    origins=["*"],
+    # --- MODIFIED: Added localhost back for testing ---
+    origins=["https://resqforce.vercel.app", "http://localhost:5173"], 
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "Accept"]
 )
 
-# --- MongoDB Configuration (No changes here) ---
-# Load the MONGO_URI from the environment variables
+# --- MongoDB Configuration (Unchanged) ---
 MONGO_URI = os.environ.get('MONGO_URI') 
 client = MongoClient(MONGO_URI)
 db = client['rescue_db']
 agencies_collection = db['agencies']
 emergencies_collection = db['emergencies']
-resources_collection = db['resources'] # Keep if used elsewhere
+resources_collection = db['resources'] 
 
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-# --- NEW: Haversine Distance Calculation Function ---
+# --- Haversine Distance Calculation Function (Unchanged) ---
 def calculate_distance(lat1, lon1, lat2, lon2):
-    """
-    Calculate the great circle distance in kilometers between two points 
-    on the earth (specified in decimal degrees)
-    """
-    # Check for None values
-    if None in [lat1, lon1, lat2, lon2]:
-        return float('inf') # Return infinity if any coordinate is missing
-
+    if None in [lat1, lon1, lat2, lon2]: return float('inf') 
     try:
-        # Convert decimal degrees to radians 
         lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
-
-        # Haversine formula 
         dlon = lon2 - lon1 
         dlat = lat2 - lat1 
         a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
         c = 2 * asin(sqrt(a)) 
-        r = 6371 # Radius of earth in kilometers. Use 3956 for miles
+        r = 6371 
         return c * r
     except ValueError:
-         return float('inf') # Handle potential math errors
-# --- END: Haversine Function ---
+         return float('inf')
 
-# --- NEW: Email Sending Function ---
-# --- REPLACED: Email Sending Function with SendGrid ---
+# --- Email Sending Function (Unchanged) ---
 def send_emergency_email(agency_email, emergency_details):
-    """Sends an email notification using the SendGrid API."""
-    
-    sender_email = os.environ.get('EMAIL_ADDRESS') # Your resqforce1234@gmail.com
-    sendgrid_api_key = os.environ.get('SENDGRID_API_KEY') # Reads the key from Render's env vars
-
+    sender_email = os.environ.get('EMAIL_ADDRESS')
+    sendgrid_api_key = os.environ.get('SENDGRID_API_KEY')
     if not sender_email or not sendgrid_api_key:
         print("ERROR: EMAIL_ADDRESS or SENDGRID_API_KEY not configured.")
         return False
-
-    # Construct email body (same as before)
     body = f"""
     A new emergency requires attention:
-
     Severity: {emergency_details.get('severity', 'N/A').capitalize()}
     Type: {emergency_details.get('tag', 'N/A').capitalize()}
     Description: {emergency_details.get('description', 'No description provided.')}
     Location: Approx. {emergency_details.get('location', 'N/A')}
     Reported At: {emergency_details.get('reported_at', datetime.now(timezone.utc)).strftime('%Y-%m-%d %H:%M:%S UTC')}
-
-    Please respond accordingly.
-
     ---
     ResQForce Automated System
     (ID: {emergency_details.get('id', 'N/A')})
     """
-
-    # Create the SendGrid Mail object
     message = Mail(
-        from_email=sender_email,
-        to_emails=agency_email,
+        from_email=sender_email, to_emails=agency_email,
         subject=f"New Emergency Assignment: {emergency_details.get('tag', 'N/A').capitalize()}",
         plain_text_content=body
     )
-    
     try:
         print(f"Attempting to send assignment email to {agency_email} via SendGrid...")
         sg = SendGridAPIClient(sendgrid_api_key)
         response = sg.send(message)
-        
-        # Check SendGrid's response status code
         if response.status_code >= 200 and response.status_code < 300:
             print(f"Email sent successfully. Status Code: {response.status_code}")
             return True
@@ -123,10 +90,69 @@ def send_emergency_email(agency_email, emergency_details):
             print(f"ERROR: SendGrid failed. Status: {response.status_code}, Body: {response.body}")
             return False
     except Exception as e:
-        # This will catch errors if the API key is wrong or other issues
         print(f"ERROR: Failed to send email via SendGrid to {agency_email}: {e}")
         return False
-# --- END: Email Sending Function Replacement ---
+
+# --- NEW: Automated Voice Call Function ---
+def send_emergency_call(agency_phone_number, emergency_details):
+    """Sends an automated voice call to the specified agency via Twilio."""
+    
+    # Read credentials from environment variables
+    account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+    auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
+    twilio_phone_number = os.environ.get('TWILIO_PHONE_NUMBER')
+
+    if not all([account_sid, auth_token, twilio_phone_number]):
+        print("ERROR: Twilio credentials (SID, TOKEN, or PHONE_NUMBER) not configured.")
+        return False
+        
+    try:
+        client = Client(account_sid, auth_token)
+
+        # Create the dynamic text-to-speech message
+        try:
+            # Simple landmark guess (can be improved)
+            landmark = f"near {emergency_details.get('description', 'the reported site').split('near')[-1].split(' ')[1]}"
+        except:
+            landmark = "at the reported coordinates"
+
+        # TwiML (Twilio Markup Language) to tell Twilio what to say
+        twiml_message = f"""
+        <Response>
+            <Say voice="alice" language="en-US">
+                This is an automated dispatch from ResQForce.
+            </Say>
+            <Pause length="1"/>
+            <Say voice="alice" language="en-US">
+                New emergency reported.
+                Severity: {emergency_details.get('severity', 'Not specified')}.
+                Type: {emergency_details.get('tag', 'Not specified')}.
+                Description: {emergency_details.get('description', 'No description provided.')}.
+                Location: {landmark}.
+            </Say>
+            <Pause length="1"/>
+            <Say voice="alice" language="en-US">
+                Please check your email for full details. This is an automated message.
+            </Say>
+        </Response>
+        """
+
+        print(f"Attempting to place automated call to {agency_phone_number}...")
+        
+        call = client.calls.create(
+            twiml=twiml_message,
+            to=agency_phone_number,  # Must be in E.164 format (e.g., +91...)
+            from_=twilio_phone_number
+        )
+        
+        print(f"Call initiated successfully. Call SID: {call.sid}")
+        return True
+    
+    except Exception as e:
+        print(f"ERROR: Failed to place Twilio call to {agency_phone_number}: {e}")
+        return False
+# --- END: Automated Voice Call Function ---
+
 
 # --- API Endpoints ---
 
@@ -136,10 +162,8 @@ def api_register():
     data = request.json
     try:
         rescuing_id = data.get('rescuingId')
-        if not rescuing_id:
-            return jsonify({'error': "Rescuing ID is required."}), 400
+        if not rescuing_id: return jsonify({'error': "Rescuing ID is required."}), 400
         pattern = r"^\d{4}[a-zA-Z]\d[a-zA-Z]{3}$"
-        # Corrected error message slightly for clarity based on previous context
         if not re.fullmatch(pattern, rescuing_id):
              return jsonify({'error': "Invalid Rescuing ID pattern. Must be NNNNANAAA."}), 400
         if agencies_collection.find_one({'email': data['email']}):
@@ -169,8 +193,7 @@ def api_login():
     data = request.json
     email = data.get('email')
     password = data.get('password')
-    if not email or not password:
-        return jsonify({'error': 'Email and password are required'}), 400
+    if not email or not password: return jsonify({'error': 'Email and password are required'}), 400
     hashed_password = hash_password(password)
     try:
         agency = agencies_collection.find_one({'email': email})
@@ -220,26 +243,22 @@ def report_emergency():
         # Prepare emergency data (unchanged)
         emergency_lat = data['lat']
         emergency_lng = data['lng']
-        report_time = datetime.now(timezone.utc) # Capture time before DB insert
+        report_time = datetime.now(timezone.utc)
         emergency_data = {
-            'latitude': emergency_lat,
-            'longitude': emergency_lng,
-            'description': data['description'],
-            'status': 'pending',
-            'created_at': report_time,
-            'reported_by': 'public',
-            'tag': data['tag'],
-            'severity': data.get('severity', 'low')
+            'latitude': emergency_lat, 'longitude': emergency_lng,
+            'description': data['description'], 'status': 'pending',
+            'created_at': report_time, 'reported_by': 'public',
+            'tag': data['tag'], 'severity': data.get('severity', 'low')
         }
         # Insert into DB (unchanged)
         result = emergencies_collection.insert_one(emergency_data)
-        new_emergency_id = result.inserted_id # Get the ID
+        new_emergency_id = result.inserted_id
 
-        # --- ADDED: Find Closest Agency Logic ---
-        # Fetch only necessary fields, exclude NDRF role
+        # --- MODIFIED: Find Closest Agency Logic (to include 'phone') ---
         agencies = list(agencies_collection.find(
-            {'role': {'$ne': 'ndrf'}}, # Exclude agencies with role 'ndrf'
-            {'_id': 1, 'email': 1, 'latitude': 1, 'longitude': 1}
+            {'role': {'$ne': 'ndrf'}},
+            # --- ADDED 'phone' to the fields to fetch ---
+            {'_id': 1, 'email': 1, 'phone': 1, 'latitude': 1, 'longitude': 1}
         ))
         
         closest_agency = None
@@ -256,37 +275,48 @@ def report_emergency():
                 closest_agency = agency
         # --- END: Find Closest Agency Logic ---
         
-        # --- ADDED: Send Email Logic ---
-        if closest_agency and closest_agency.get('email'):
+        # --- MODIFIED: Send Email & Call Logic ---
+        if closest_agency:
+            # Prepare details
             email_details = {
                 'id': str(new_emergency_id),
                 'description': emergency_data['description'],
-                'location': f"{emergency_lat:.5f}, {emergency_lng:.5f}", # Format coords
+                'location': f"{emergency_lat:.5f}, {emergency_lng:.5f}",
                 'severity': emergency_data['severity'],
                 'tag': emergency_data['tag'],
-                'reported_at': report_time # Use captured time
+                'reported_at': report_time
             }
-            # Call the email sending function (runs in the background)
-            send_emergency_email(closest_agency['email'], email_details)
+            
+            # 1. Send Email (Unchanged)
+            if closest_agency.get('email'):
+                send_emergency_email(closest_agency['email'], email_details)
+            else:
+                print(f"Agency {closest_agency.get('name')} missing email.")
+
+            # 2. Send Call (NEW)
+            if closest_agency.get('phone'):
+                # Note: This runs in sequence.
+                send_emergency_call(closest_agency['phone'], email_details)
+            else:
+                print(f"Agency {closest_agency.get('name')} missing phone number.")
+
         else:
-            print(f"No suitable non-NDRF agency found nearby for emergency {new_emergency_id} or agency missing email.")
+            print(f"No suitable non-NDRF agency found nearby for emergency {new_emergency_id}.")
             if not agencies:
                  print("Agency list was empty or only contained NDRF.")
-        # --- END: Send Email Logic ---
+        # --- END: Send Email & Call Logic ---
 
-        # Return success to the user immediately (email sends asynchronously)
         return jsonify({'message': 'Emergency reported successfully'}), 201
         
     except Exception as e:
-        print(f"ERROR in /api/report_emergency: {e}") # Log the error
+        print(f"ERROR in /api/report_emergency: {e}")
         return jsonify({'error': f'Failed to report emergency: {str(e)}'}), 500
 # --- END MODIFICATION ---
 
 @app.route('/api/update_location', methods=['POST'])
 def update_location():
     # --- Code Block Unchanged ---
-    if 'agency_id' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
+    if 'agency_id' not in session: return jsonify({'error': 'Unauthorized'}), 401
     data = request.json
     try:
         lat, lng = float(data['lat']), float(data['lng'])
@@ -316,22 +346,19 @@ def get_emergencies():
 
 @app.route('/api/emergency_details')
 def get_all_emergency_details():
-    # --- Code Block Unchanged (but uses calculate_distance now) ---
-    if 'agency_id' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
+    # --- Code Block Unchanged ---
+    if 'agency_id' not in session: return jsonify({'error': 'Unauthorized'}), 401
     try:
         lat, lng = session.get('latitude', 20.5937), session.get('longitude', 78.9629)
         emergencies = list(emergencies_collection.find({'status': 'pending'}).sort('created_at', -1))
         for emergency in emergencies:
             emergency['_id'] = str(emergency['_id'])
             elat, elng = float(emergency.get('latitude', 0)), float(emergency.get('longitude', 0))
-            # Check if coordinates are valid before calculating distance
             if lat is not None and lng is not None and elat is not None and elng is not None:
-                 # Use calculate_distance function and convert km to meters
                  distance = calculate_distance(lat, lng, elat, elng) * 1000
                  emergency['distance'] = round(distance, 2)
             else:
-                 emergency['distance'] = None # Handle cases with missing coords
+                 emergency['distance'] = None 
             severity = emergency.get('severity', 'low')
             emergency['severity_display'] = f"🔴 High" if severity == 'high' else f"🟡 Medium" if severity == 'medium' else f"🟢 Low"
         return jsonify(emergencies)
@@ -342,8 +369,7 @@ def get_all_emergency_details():
 @app.route('/api/agencies')
 def get_agencies():
     # --- Code Block Unchanged ---
-     if 'agency_id' not in session:
-         return jsonify({'error': 'Unauthorized'}), 401
+     if 'agency_id' not in session: return jsonify({'error': 'Unauthorized'}), 401
      try:
          agencies = list(agencies_collection.find({}, {'name': 1, 'latitude': 1, 'longitude': 1, 'expertise': 1, 'role': 1}))
          for agency in agencies:
@@ -374,8 +400,7 @@ def delete_all_emergencies():
     data = request.json
     email = data.get('email')
     password = data.get('password')
-    if not email or not password:
-        return jsonify({'error': 'Email and password are required'}), 400
+    if not email or not password: return jsonify({'error': 'Email and password are required'}), 400
     try:
         ndrf_agency = agencies_collection.find_one({'email': email,'password': hash_password(password)})
         if not ndrf_agency or ndrf_agency.get('role') != 'ndrf':
