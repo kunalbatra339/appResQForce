@@ -26,7 +26,7 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 CORS(app, 
     supports_credentials=True,
     # --- MODIFIED: Added localhost back for testing ---
-    origins=["https://resqforce.vercel.app", "http://localhost:5173"], 
+    origins=["https://app-res-q-force.vercel.app", "http://localhost:5173"], 
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "Accept"]
 )
