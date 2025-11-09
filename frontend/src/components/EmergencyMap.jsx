@@ -297,7 +297,7 @@ function EmergencyMap() {
                             key={emergency._id}
                             position={[emergency.latitude, emergency.longitude]}
                             icon={emergencyIcon} // Correct red icon
-                            draggable={true}
+                            draggable={false}
                             eventHandlers={{ dragend: (event) => handleEmergencyDragEnd(emergency._id, event) }}
                             ref={el => markerRefs.current[emergency._id] = el}
                         >
